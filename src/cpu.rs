@@ -26,7 +26,7 @@ impl Cpu {
         Self {
             v: [0; 16],
             i: 0,
-            pc: 0x200, // CHIP-8 programs are loaded starting at 0x200
+            pc: 0x200,
             sp: 0,
             stack: [0; 16],
             delay_timer: 0,

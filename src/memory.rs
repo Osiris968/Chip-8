@@ -61,7 +61,6 @@ impl Memory {
             .unwrap();
 
         // Copy the font values into memory at addresses 0x0050 to 0x009F.
-        self.data[0x0050..0x0050 + font_values.len()]
-            .copy_from_slice(&font_values);
+        self.data[0x0050..0x0050 + font_values.len()].copy_from_slice(&font_values);
     }
 }

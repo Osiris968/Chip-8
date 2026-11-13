@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 // Copyright (c) 2026 Michael Kestner. All Rights Reserved.
 // display.rs
 //
@@ -9,8 +11,8 @@ const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const SCALE: usize = 10;
 
-pub fn handle_window() {
-    let mut window = Window::new(
+pub fn create_window() -> (Window, Vec<u32>) {
+    let window = Window::new(
         "Chip-8 ROM",
         WIDTH * SCALE,
         HEIGHT * SCALE,
@@ -18,8 +20,12 @@ pub fn handle_window() {
     )
     .unwrap();
 
-    let mut buffer: Vec<u32> = vec![0; (WIDTH * SCALE) * (HEIGHT * SCALE)];
+    let buffer: Vec<u32> = vec![0; (WIDTH * SCALE) * (HEIGHT * SCALE)];
 
+    (window, buffer)
+}
+
+pub fn handle_window(mut window: Window, mut buffer: Vec<u32>) {
     let display = vec![0; WIDTH * HEIGHT];
     window.set_target_fps(60);
 

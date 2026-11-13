@@ -24,15 +24,29 @@ fn load_rom(memory: &mut [u8], rom_path: &str) -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     // Creating memory vector and loading rom into memory.
-    let mut memory = memory::Memory::new();
-    memory.load_font();
-    let ram = memory.get_mut_vec();
+    let mut ram = memory::Memory::new();
+    ram.load_font();
+    let ram = ram.get_mut_vec();
 
     let mut _cpu = cpu::Cpu::new();
+    let pc = &_cpu.pc; // 512
 
-    load_rom(ram, "roms/IBM Logo.ch8")?;
+    match load_rom(ram, "roms/IBM Logo.ch8") {
+        Ok(()) => (),
+        Err(e) => {
+            eprintln!("Couldn't load rom: {}", e);
+            return Ok(());
+        }
+    }
 
-    display::handle_window();
+    // TODO: Ignore the display until I get the cpu under control.
+    // let (window, buffer) = display::create_window();
+
+    // This holds the whole program in the loop until the window closes.
+    // I probably want to change this to have the main loop in this function.
+    // display::handle_window(window, buffer);
+
+    println!("{}", pc);
 
     Ok(())
 }
