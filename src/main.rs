@@ -6,11 +6,47 @@
 mod cpu;
 mod display;
 mod memory;
+mod test;
 
+use minifb::{Key, Window, WindowOptions};
 use std::fs;
 use std::io;
 
+const WIDTH: usize = 64;
+const HEIGHT: usize = 32;
+const SCALE: usize = 10;
 const ROM_START_ADDRESS: usize = 0x200;
+
+pub fn create_window() -> (Window, Vec<u32>) {
+    let window = Window::new(
+        "Chip-8 ROM",
+        WIDTH * SCALE,
+        HEIGHT * SCALE,
+        WindowOptions::default(),
+    )
+    .unwrap();
+
+    let buffer: Vec<u32> = vec![0; (WIDTH * SCALE) * (HEIGHT * SCALE)];
+
+    (window, buffer)
+}
+
+fn draw_window(display: &[i32], buffer: &mut [u32]) {
+    for y in 0..HEIGHT {
+        for x in 0..WIDTH {
+            let pixel = display[y * WIDTH + x];
+            let color = if pixel != 0 { 0x00FFFFFF } else { 0x00000000 };
+
+            for dy in 0..SCALE {
+                for dx in 0..SCALE {
+                    let wx = x * SCALE + dx;
+                    let wy = y * SCALE + dy;
+                    buffer[wy * (WIDTH * SCALE) + wx] = color;
+                }
+            }
+        }
+    }
+}
 
 fn load_rom(memory: &mut [u8], rom_path: &str) -> io::Result<()> {
     let rom_data = fs::read(rom_path)?;
@@ -45,19 +81,25 @@ fn main() -> io::Result<()> {
         }
     }
 
-    // TODO: Ignore the display until I get the cpu under control.
-    // let (window, buffer) = display::create_window();
+    let (mut window, mut buffer): (Window, Vec<u32>) = create_window();
 
-    // This holds the whole program in the loop until the window closes.
-    // I probably want to change this to have the main loop in this function.
-    // display::handle_window(window, buffer);
+    let display = vec![0; WIDTH * HEIGHT];
+    window.set_target_fps(60);
 
-    if cpu.pc == ram.len() {
-        // I probably want this to break when I have the main loop ready.
+    // NOTE: Main loop
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        draw_window(&display, &mut buffer);
+
+        if cpu.pc == ram.len() {
+            break; // Program counter is out of bounds!
+        }
+
+        let _instruction = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
+
+        window
+            .update_with_buffer(&buffer, WIDTH * SCALE, HEIGHT * SCALE)
+            .unwrap();
     }
-    let instruction = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
-
-    println!("{:?}", instruction);
 
     // print_memory(ram);
 
