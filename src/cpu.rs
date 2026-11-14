@@ -8,7 +8,7 @@
 pub struct Cpu {
     pub v: [u8; 16], // V0..VF (VF is the flag register)
     pub i: u16,      // index register
-    pub pc: u16,     // starts at 0x200
+    pub pc: usize,   // starts at 0x200
     pub sp: usize,
     pub stack: [u16; 16],
     pub delay_timer: u8,
@@ -33,4 +33,11 @@ impl Cpu {
             sound_timer: 0,
         }
     }
+
+    pub fn fetch(pc1: u8, pc2: u8) {
+        let instruction: u16 = u16::from_ne_bytes([pc1, pc2]);
+        let instruction: u16 = (pc1 as u16) << 8 | (pc2 as u16);
+    }
+
+    pub fn decode(instruction: u16) {}
 }

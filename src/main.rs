@@ -28,8 +28,7 @@ fn main() -> io::Result<()> {
     ram.load_font();
     let ram = ram.get_mut_vec();
 
-    let mut _cpu = cpu::Cpu::new();
-    let pc = &_cpu.pc; // 512
+    let cpu = cpu::Cpu::new();
 
     match load_rom(ram, "roms/IBM Logo.ch8") {
         Ok(()) => (),
@@ -46,7 +45,27 @@ fn main() -> io::Result<()> {
     // I probably want to change this to have the main loop in this function.
     // display::handle_window(window, buffer);
 
-    println!("{}", pc);
+    let instruction: (u8, u8) = (
+        match ram.get(cpu.pc) {
+            Some(val) => val.to_owned(),
+            None => {
+                eprintln!("Could not find value");
+                0
+            }
+        },
+        match ram.get(cpu.pc + 1) {
+            Some(val) => val.to_owned(),
+            None => {
+                eprintln!("Could not find value");
+                0
+            }
+        },
+    );
+    // Not as safe, but 14 less lines lmfao.
+    // let instruction: (u8, u8) = (ram[cpu.pc], ram[cpu.pc + 1]);
+    println!("{:X?}", instruction);
+
+    let _instr: u16 = (instruction.0 as u16) << 8 | (instruction.1 as u16);
 
     Ok(())
 }
