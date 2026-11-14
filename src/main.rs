@@ -5,10 +5,11 @@
 
 mod cpu;
 mod display;
+mod instructions;
 mod memory;
 mod test;
 
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, Window};
 use std::fs;
 use std::io;
 
@@ -16,37 +17,6 @@ const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const SCALE: usize = 10;
 const ROM_START_ADDRESS: usize = 0x200;
-
-pub fn create_window() -> (Window, Vec<u32>) {
-    let window = Window::new(
-        "Chip-8 ROM",
-        WIDTH * SCALE,
-        HEIGHT * SCALE,
-        WindowOptions::default(),
-    )
-    .unwrap();
-
-    let buffer: Vec<u32> = vec![0; (WIDTH * SCALE) * (HEIGHT * SCALE)];
-
-    (window, buffer)
-}
-
-fn draw_window(display: &[i32], buffer: &mut [u32]) {
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
-            let pixel = display[y * WIDTH + x];
-            let color = if pixel != 0 { 0x00FFFFFF } else { 0x00000000 };
-
-            for dy in 0..SCALE {
-                for dx in 0..SCALE {
-                    let wx = x * SCALE + dx;
-                    let wy = y * SCALE + dy;
-                    buffer[wy * (WIDTH * SCALE) + wx] = color;
-                }
-            }
-        }
-    }
-}
 
 fn load_rom(memory: &mut [u8], rom_path: &str) -> io::Result<()> {
     let rom_data = fs::read(rom_path)?;
@@ -59,9 +29,22 @@ fn load_rom(memory: &mut [u8], rom_path: &str) -> io::Result<()> {
 }
 
 #[allow(unused)]
-fn print_memory(ram: &mut [u8]) {
+fn print_memory(ram: &[u8]) {
     for (index, byte) in ram.iter().enumerate() {
         println!("Address {}: {}", index, byte);
+    }
+}
+
+#[allow(unused)]
+fn decode(instruction: u16, buffer: &mut [u32], cpu: &mut cpu::Cpu) {
+    match instruction {
+        0x00E0 => {
+            instructions::op_clear_screen(buffer);
+        }
+        0x00EE => {
+            instructions::op_return(cpu);
+        }
+        _ => {}
     }
 }
 
@@ -71,7 +54,7 @@ fn main() -> io::Result<()> {
     ram.load_font();
     let ram = ram.get_mut_vec();
 
-    let cpu = cpu::Cpu::new();
+    let mut cpu = cpu::Cpu::new();
 
     match load_rom(ram, "roms/IBM Logo.ch8") {
         Ok(()) => (),
@@ -81,27 +64,31 @@ fn main() -> io::Result<()> {
         }
     }
 
-    let (mut window, mut buffer): (Window, Vec<u32>) = create_window();
+    let (mut window, mut buffer): (Window, Vec<u32>) = display::create_window();
 
     let display = vec![0; WIDTH * HEIGHT];
     window.set_target_fps(60);
 
     // NOTE: Main loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        draw_window(&display, &mut buffer);
+        display::draw_window(&display, &mut buffer);
 
         if cpu.pc == ram.len() {
             break; // Program counter is out of bounds!
         }
 
-        let _instruction = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
+        let instruction = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
 
-        window
-            .update_with_buffer(&buffer, WIDTH * SCALE, HEIGHT * SCALE)
-            .unwrap();
+        decode(instruction, &mut buffer, &mut cpu);
+
+        match window.update_with_buffer(&buffer, WIDTH * SCALE, HEIGHT * SCALE) {
+            Ok(()) => (),
+            Err(e) => {
+                eprintln!("Error writing to window buffer: {}", e);
+                break;
+            }
+        }
     }
-
-    // print_memory(ram);
 
     Ok(())
 }
