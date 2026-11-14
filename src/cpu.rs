@@ -34,9 +34,9 @@ impl Cpu {
         }
     }
 
-    pub fn fetch(pc1: u8, pc2: u8) {
-        let instruction: u16 = u16::from_ne_bytes([pc1, pc2]);
-        let instruction: u16 = (pc1 as u16) << 8 | (pc2 as u16);
+    pub fn fetch(pc1: u8, pc2: u8) -> u16 {
+        // Shift pc1 8 bits to the left and add pc2 to the now empty 8 bits on the right.
+        (pc1 as u16) << 8 | (pc2 as u16)
     }
 
     pub fn decode(instruction: u16) {}

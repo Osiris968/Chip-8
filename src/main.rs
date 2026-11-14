@@ -22,6 +22,13 @@ fn load_rom(memory: &mut [u8], rom_path: &str) -> io::Result<()> {
     Ok(())
 }
 
+#[allow(unused)]
+fn print_memory(ram: &mut [u8]) {
+    for (index, byte) in ram.iter().enumerate() {
+        println!("Address {}: {}", index, byte);
+    }
+}
+
 fn main() -> io::Result<()> {
     // Creating memory vector and loading rom into memory.
     let mut ram = memory::Memory::new();
@@ -45,27 +52,14 @@ fn main() -> io::Result<()> {
     // I probably want to change this to have the main loop in this function.
     // display::handle_window(window, buffer);
 
-    let instruction: (u8, u8) = (
-        match ram.get(cpu.pc) {
-            Some(val) => val.to_owned(),
-            None => {
-                eprintln!("Could not find value");
-                0
-            }
-        },
-        match ram.get(cpu.pc + 1) {
-            Some(val) => val.to_owned(),
-            None => {
-                eprintln!("Could not find value");
-                0
-            }
-        },
-    );
-    // Not as safe, but 14 less lines lmfao.
-    // let instruction: (u8, u8) = (ram[cpu.pc], ram[cpu.pc + 1]);
-    println!("{:X?}", instruction);
+    if cpu.pc == ram.len() {
+        // I probably want this to break when I have the main loop ready.
+    }
+    let instruction = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
 
-    let _instr: u16 = (instruction.0 as u16) << 8 | (instruction.1 as u16);
+    println!("{:?}", instruction);
+
+    // print_memory(ram);
 
     Ok(())
 }
