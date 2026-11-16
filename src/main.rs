@@ -35,12 +35,9 @@ fn print_memory(ram: &[u8]) {
     }
 }
 
-#[allow(unused)]
-fn decode(instruction: u16, buffer: &mut [u32], cpu: &mut cpu::Cpu) {
-    match instruction {
-        0x00E0 => {
-            instructions::op_clear_screen(buffer);
-        }
+#[allow(clippy::all)]
+fn decode(opcode: u16, cpu: &mut cpu::Cpu) {
+    match opcode {
         0x00EE => {
             instructions::op_return(cpu);
         }
@@ -77,9 +74,25 @@ fn main() -> io::Result<()> {
             break; // Program counter is out of bounds!
         }
 
-        let instruction = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
+        // Fetch instruction
+        let opcode = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
 
-        decode(instruction, &mut buffer, &mut cpu);
+        // Increment the pc before we execute anything.
+        cpu.pc += 2;
+
+        match opcode {
+            0x00E0 => {
+                instructions::op_clear_screen(&mut buffer);
+            }
+            _ => decode(opcode, &mut cpu),
+        }
+
+        if cpu.delay_timer > 0 {
+            cpu.delay_timer -= 1;
+        }
+        if cpu.sound_timer > 0 {
+            cpu.sound_timer -= 1;
+        }
 
         match window.update_with_buffer(&buffer, WIDTH * SCALE, HEIGHT * SCALE) {
             Ok(()) => (),
