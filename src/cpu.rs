@@ -39,5 +39,5 @@ impl Cpu {
         (pc1 as u16) << 8 | (pc2 as u16)
     }
 
-    pub fn decode(instruction: u16) {}
+    pub fn decode(&mut self, opcode: u16) {}
 }

@@ -37,6 +37,7 @@ fn print_memory(ram: &[u8]) {
 
 #[allow(clippy::all)]
 fn decode(opcode: u16, cpu: &mut cpu::Cpu) {
+    // TODO: Add more instructions to be executed.
     match opcode {
         0x00EE => {
             instructions::op_return(cpu);
@@ -74,12 +75,13 @@ fn main() -> io::Result<()> {
             break; // Program counter is out of bounds!
         }
 
-        // Fetch instruction
+        // Fetch instruction.
         let opcode = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
 
         // Increment the pc before we execute anything.
         cpu.pc += 2;
 
+        // Decode instruction.
         match opcode {
             0x00E0 => {
                 instructions::op_clear_screen(&mut buffer);
@@ -101,7 +103,7 @@ fn main() -> io::Result<()> {
                 break;
             }
         }
-    }
+    } // End main loop.
 
     Ok(())
 }
