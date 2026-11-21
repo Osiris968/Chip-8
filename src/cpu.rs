@@ -55,6 +55,15 @@ impl Cpu {
             opcode if (opcode >> 12) == 3 => {
                 instructions::op_3xkk(opcode, self);
             }
+            opcode if (opcode >> 12) == 4 => {
+                instructions::op_4xkk(opcode, self);
+            }
+            opcode if (opcode >> 12) == 5 => {
+                instructions::op_5xy0(opcode, self);
+            }
+            opcode if (opcode >> 12) == 6 => {
+                instructions::op_5xy0(opcode, self);
+            }
             _ => {}
         }
     }

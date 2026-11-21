@@ -32,8 +32,8 @@ pub fn op_2nnn(opcode: u16, cpu: &mut cpu::Cpu) {
 
 /// Skip next instruction if Vx = kk.
 pub fn op_3xkk(opcode: u16, cpu: &mut cpu::Cpu) {
-    let vx: u8 = ((opcode & 0x0F00) >> 8) as u8;
-    let byte: u8 = (opcode & 0x00FF) as u8;
+    let vx = (opcode & 0x0F00) >> 8;
+    let byte = (opcode & 0x00FF) as u8;
 
     if cpu.v[vx as usize] == byte {
         cpu.pc += 2;
@@ -42,8 +42,8 @@ pub fn op_3xkk(opcode: u16, cpu: &mut cpu::Cpu) {
 
 /// Skip next instruction if Vx != kk.
 pub fn op_4xkk(opcode: u16, cpu: &mut cpu::Cpu) {
-    let vx: u8 = ((opcode & 0x0F00) >> 8) as u8;
-    let byte: u8 = (opcode & 0x00FF) as u8;
+    let vx = (opcode & 0x0F00) >> 8;
+    let byte = (opcode & 0x00FF) as u8;
 
     if cpu.v[vx as usize] != byte {
         cpu.pc += 2;
@@ -52,10 +52,18 @@ pub fn op_4xkk(opcode: u16, cpu: &mut cpu::Cpu) {
 
 /// Skip next instruction if Vx = Vy.
 pub fn op_5xy0(opcode: u16, cpu: &mut cpu::Cpu) {
-    let vx: u8 = ((opcode & 0x0F00) >> 8) as u8;
-    let vy: u8 = ((opcode & 0x00F0) >> 4) as u8;
+    let vx = (opcode & 0x0F00) >> 8;
+    let vy = (opcode & 0x00F0) >> 4;
 
     if cpu.v[vx as usize] == cpu.v[vy as usize] {
         cpu.pc += 2;
     }
+}
+
+/// Set Vx = kk.
+pub fn op_6xkk(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = (opcode & 0x0F00) >> 8;
+    let byte = (opcode & 0x00FF) as u8;
+
+    cpu.v[vx as usize] = byte;
 }
