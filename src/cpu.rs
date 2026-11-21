@@ -5,7 +5,7 @@
 //
 // Registers, fetch/decode/execute
 
-use crate::instructions;
+use crate::{instructions, memory::Memory};
 
 pub struct Cpu {
     pub v: [u8; 16], // V0..VF (VF is the flag register)
@@ -15,6 +15,7 @@ pub struct Cpu {
     pub stack: [u16; 16],
     pub delay_timer: u8,
     pub sound_timer: u8,
+    pub ram: Memory,
 }
 
 impl Default for Cpu {
@@ -33,12 +34,23 @@ impl Cpu {
             stack: [0; 16],
             delay_timer: 0,
             sound_timer: 0,
+            ram: Memory::new(),
         }
     }
 
-    pub fn fetch(pc1: u8, pc2: u8) -> u16 {
-        // Shift pc1 8 bits to the left and add pc2 to the now empty 8 bits on the right.
-        (pc1 as u16) << 8 | (pc2 as u16)
+    pub fn fetch(&self) -> Option<u16> {
+        let pc = self.pc as usize;
+
+        if pc >= self.ram.data.len() {
+            return None;
+        }
+
+        let high = self.ram.data[pc];
+        let low = self.ram.data[pc + 1];
+
+        // Shift the high byte 8 bits to the left
+        // and put the low byte in the right 8 bits.
+        Some((high as u16) << 8 | (low as u16))
     }
 
     pub fn decode(&mut self, opcode: u16) {
@@ -98,6 +110,18 @@ impl Cpu {
                 }
                 _ => {}
             },
+            opcode if (opcode >> 12) == 9 => {
+                instructions::op_9xy0(opcode, self);
+            }
+            opcode if (opcode >> 12) == 0xA => {
+                instructions::op_Annn(opcode, self);
+            }
+            opcode if (opcode >> 12) == 0xB => {
+                instructions::op_Bnnn(opcode, self);
+            }
+            opcode if (opcode >> 12) == 0xC => {
+                instructions::op_Cxkk(opcode, self);
+            }
             _ => {}
         }
     }

@@ -36,13 +36,14 @@ fn print_memory(ram: &[u8]) {
 
 fn main() -> io::Result<()> {
     // Creating memory vector and loading rom into memory.
-    let mut ram = memory::Memory::new();
-    ram.load_font();
-    let ram = ram.get_mut_vec();
+    // let mut ram = memory::Memory::new();
+    // ram.load_font();
+    // let ram = ram.get_mut_vec();
 
     let mut cpu = cpu::Cpu::new();
+    // let ram = cpu.ram.get_mut_vec();
 
-    match load_rom(ram, "roms/IBM Logo.ch8") {
+    match load_rom(cpu.ram.get_mut_vec(), "roms/IBM Logo.ch8") {
         Ok(()) => (),
         Err(e) => {
             eprintln!("Couldn't load rom: {}", e);
@@ -59,12 +60,14 @@ fn main() -> io::Result<()> {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         display::draw_window(&display, &mut buffer);
 
-        if cpu.pc as usize == ram.len() {
+        if cpu.pc as usize + 1 >= cpu.ram.data.len() {
             break; // Program counter is out of bounds!
         }
 
-        // Fetch instruction.
-        let opcode = cpu::Cpu::fetch(ram[cpu.pc as usize], ram[cpu.pc as usize + 1]);
+        // Fetch instruction. Breaks if pc if out of bounds.
+        let Some(opcode) = cpu.fetch() else {
+            break;
+        };
 
         // Increment the pc before we execute anything.
         cpu.pc += 2;

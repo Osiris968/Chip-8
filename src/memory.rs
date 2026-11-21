@@ -16,7 +16,7 @@ use std::fs;
 // }
 
 pub struct Memory {
-    data: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 impl Default for Memory {
