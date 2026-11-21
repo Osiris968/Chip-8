@@ -7,7 +7,6 @@ mod cpu;
 mod display;
 mod instructions;
 mod memory;
-mod test;
 
 use minifb::{Key, Window};
 use std::fs;
