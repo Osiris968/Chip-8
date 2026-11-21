@@ -42,6 +42,9 @@ fn decode(opcode: u16, cpu: &mut cpu::Cpu) {
         0x00EE => {
             instructions::op_return(cpu);
         }
+        opcode if (opcode >> 12) == 1 => {
+            instructions::op_jump(opcode, cpu);
+        }
         _ => {}
     }
 }
