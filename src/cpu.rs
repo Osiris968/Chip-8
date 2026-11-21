@@ -62,7 +62,7 @@ impl Cpu {
                 instructions::op_5xy0(opcode, self);
             }
             opcode if (opcode >> 12) == 6 => {
-                instructions::op_5xy0(opcode, self);
+                instructions::op_6xkk(opcode, self);
             }
             opcode if (opcode >> 12) == 7 => {
                 instructions::op_7xkk(opcode, self);
@@ -74,6 +74,27 @@ impl Cpu {
                 }
                 opcode if (opcode & 0xF) == 1 => {
                     instructions::op_8xy1(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 2 => {
+                    instructions::op_8xy2(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 3 => {
+                    instructions::op_8xy3(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 4 => {
+                    instructions::op_8xy4(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 5 => {
+                    instructions::op_8xy5(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 6 => {
+                    instructions::op_8xy6(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 7 => {
+                    instructions::op_8xy7(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 0xE => {
+                    instructions::op_8xyE(opcode, self);
                 }
                 _ => {}
             },

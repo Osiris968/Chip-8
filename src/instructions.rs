@@ -12,6 +12,8 @@ pub fn op_00E0(buffer: &mut [u32]) {
 #[allow(non_snake_case)]
 pub fn op_00EE(cpu: &mut cpu::Cpu) {
     cpu.sp -= 1;
+
+    cpu.pc = cpu.stack[cpu.sp];
 }
 
 /// Jump to location nnn.
@@ -73,7 +75,7 @@ pub fn op_7xkk(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let byte = (opcode & 0x00FF) as u8;
 
-    cpu.v[vx as usize] += byte;
+    cpu.v[vx as usize] = cpu.v[vx as usize].wrapping_add(byte);
 }
 
 /// Set Vx = Vy.
@@ -116,7 +118,7 @@ pub fn op_8xy4(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
 
-    let sum: u16 = (cpu.v[vx as usize] + cpu.v[vy as usize]) as u16;
+    let sum: u16 = (cpu.v[vx as usize]) as u16 + (cpu.v[vy as usize]) as u16;
 
     if sum > 255 {
         cpu.v[0xF] = 1;
@@ -140,7 +142,7 @@ pub fn op_8xy5(opcode: u16, cpu: &mut cpu::Cpu) {
         cpu.v[0xF] = 0;
     }
 
-    cpu.v[vx as usize] -= cpu.v[vy as usize];
+    cpu.v[vx as usize] = cpu.v[vx as usize].wrapping_sub(cpu.v[vy as usize]);
 }
 
 /// Set Vx = Vx SHR 1.
@@ -168,7 +170,7 @@ pub fn op_8xy7(opcode: u16, cpu: &mut cpu::Cpu) {
         cpu.v[0xF] = 0;
     }
 
-    cpu.v[vx as usize] = cpu.v[vy as usize] - cpu.v[vx as usize];
+    cpu.v[vx as usize] = cpu.v[vy as usize].wrapping_sub(cpu.v[vx as usize]);
 }
 
 /// Set Vx = Vx SHL 1
