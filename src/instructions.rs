@@ -1,6 +1,11 @@
 #![allow(unused)]
 
 use crate::cpu;
+use rand::RngExt;
+
+const WIDTH: usize = 64;
+const HEIGHT: usize = 32;
+const SCALE: usize = 10;
 
 /// Clear the display.
 #[allow(non_snake_case)]
@@ -184,4 +189,59 @@ pub fn op_8xyE(opcode: u16, cpu: &mut cpu::Cpu) {
     cpu.v[0xF] = (cpu.v[vx as usize] & 0x80) >> 7;
 
     cpu.v[vx as usize] <<= 1;
+}
+
+/// Skip next instruction if Vx != Vy.
+pub fn op_9xy0(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = (opcode & 0x0F00) >> 8;
+    let vy = (opcode & 0x00F0) >> 4;
+
+    if cpu.v[vx as usize] != cpu.v[vy as usize] {
+        cpu.pc += 2;
+    }
+}
+
+/// Set Index Register = nnn.
+#[allow(non_snake_case)]
+pub fn op_Annn(opcode: u16, cpu: &mut cpu::Cpu) {
+    let address = opcode & 0x0FFF;
+
+    cpu.i = address;
+}
+
+/// Jump to location nnn + V0.
+#[allow(non_snake_case)]
+pub fn op_Bnnn(opcode: u16, cpu: &mut cpu::Cpu) {
+    let address = opcode & 0x0FFF;
+
+    cpu.pc = cpu.v[0] as u16 + address;
+}
+
+/// Set Vx = random byte AND kk
+#[allow(non_snake_case)]
+pub fn op_Cxkk(opcode: u16, cpu: &mut cpu::Cpu) {
+    let mut rng = rand::rng();
+    let rand_byte: u8 = rng.random();
+
+    let vx = (opcode & 0x0F00) >> 8;
+    let byte = (opcode & 0x00FF) as u8;
+
+    cpu.v[vx as usize] = rand_byte & byte;
+}
+
+/// Display n-byte sprite starting at memory location I at (Vx, Vy),
+/// set VF = collision.
+#[allow(non_snake_case)]
+pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = (opcode & 0x0F00) >> 8;
+    let vy = (opcode & 0x00F0) >> 4;
+    let height = opcode & 0x000F;
+
+    // Wrap if going beyond screen boundaries.
+    let x_pos = cpu.v[vx as usize] % WIDTH as u8;
+    let y_pos = cpu.v[vy as usize] % HEIGHT as u8;
+
+    cpu.v[0xF] = 0;
+
+    for row in 0..height {}
 }
