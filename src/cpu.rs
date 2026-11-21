@@ -64,6 +64,19 @@ impl Cpu {
             opcode if (opcode >> 12) == 6 => {
                 instructions::op_5xy0(opcode, self);
             }
+            opcode if (opcode >> 12) == 7 => {
+                instructions::op_7xkk(opcode, self);
+            }
+            // Match all 0x8nnn instructions.
+            opcode if (opcode >> 12) == 8 => match opcode {
+                opcode if (opcode & 0xF) == 0 => {
+                    instructions::op_8xy0(opcode, self);
+                }
+                opcode if (opcode & 0xF) == 1 => {
+                    instructions::op_8xy1(opcode, self);
+                }
+                _ => {}
+            },
             _ => {}
         }
     }
