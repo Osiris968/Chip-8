@@ -236,6 +236,7 @@ pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
     let height = opcode & 0x000F;
+    let ram = cpu.ram.get_mut_vec();
 
     // Wrap if going beyond screen boundaries.
     let x_pos = cpu.v[vx as usize] % WIDTH as u8;
@@ -243,5 +244,12 @@ pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu) {
 
     cpu.v[0xF] = 0;
 
-    for row in 0..height {}
+    for row in 0..height {
+        let sprite_byte: u8 = ram[cpu.i as usize + row as usize];
+
+        for col in 0..8_u32 {
+            let sprite_pixel = sprite_byte & (0x80 >> col);
+            // NOTE: Need video (buffer?) 64x32 vec. :(
+        }
+    }
 }
