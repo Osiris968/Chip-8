@@ -44,13 +44,16 @@ impl Cpu {
     pub fn decode(&mut self, opcode: u16) {
         match opcode {
             0x00EE => {
-                instructions::op_return(self);
+                instructions::op_00EE(self);
             }
             opcode if (opcode >> 12) == 1 => {
-                instructions::op_jump(opcode, self);
+                instructions::op_1nnn(opcode, self);
             }
             opcode if (opcode >> 12) == 2 => {
-                instructions::op_call(opcode, self);
+                instructions::op_2nnn(opcode, self);
+            }
+            opcode if (opcode >> 12) == 3 => {
+                instructions::op_3xkk(opcode, self);
             }
             _ => {}
         }

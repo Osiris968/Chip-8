@@ -73,7 +73,7 @@ fn main() -> io::Result<()> {
         // Decode instruction.
         match opcode {
             0x00E0 => {
-                instructions::op_clear_screen(&mut buffer);
+                instructions::op_00E0(&mut buffer);
             }
             _ => cpu::Cpu::decode(&mut cpu, opcode),
         }
