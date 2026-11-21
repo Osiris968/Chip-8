@@ -35,20 +35,6 @@ fn print_memory(ram: &[u8]) {
     }
 }
 
-#[allow(clippy::all)]
-fn decode(opcode: u16, cpu: &mut cpu::Cpu) {
-    // TODO: Add more instructions to be executed.
-    match opcode {
-        0x00EE => {
-            instructions::op_return(cpu);
-        }
-        opcode if (opcode >> 12) == 1 => {
-            instructions::op_jump(opcode, cpu);
-        }
-        _ => {}
-    }
-}
-
 fn main() -> io::Result<()> {
     // Creating memory vector and loading rom into memory.
     let mut ram = memory::Memory::new();
@@ -74,12 +60,12 @@ fn main() -> io::Result<()> {
     while window.is_open() && !window.is_key_down(Key::Escape) {
         display::draw_window(&display, &mut buffer);
 
-        if cpu.pc == ram.len() {
+        if cpu.pc as usize == ram.len() {
             break; // Program counter is out of bounds!
         }
 
         // Fetch instruction.
-        let opcode = cpu::Cpu::fetch(ram[cpu.pc], ram[cpu.pc + 1]);
+        let opcode = cpu::Cpu::fetch(ram[cpu.pc as usize], ram[cpu.pc as usize + 1]);
 
         // Increment the pc before we execute anything.
         cpu.pc += 2;
@@ -89,7 +75,7 @@ fn main() -> io::Result<()> {
             0x00E0 => {
                 instructions::op_clear_screen(&mut buffer);
             }
-            _ => decode(opcode, &mut cpu),
+            _ => cpu::Cpu::decode(&mut cpu, opcode),
         }
 
         if cpu.delay_timer > 0 {

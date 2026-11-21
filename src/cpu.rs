@@ -5,10 +5,12 @@
 //
 // Registers, fetch/decode/execute
 
+use crate::instructions;
+
 pub struct Cpu {
     pub v: [u8; 16], // V0..VF (VF is the flag register)
     pub i: u16,      // index register
-    pub pc: usize,   // starts at 0x200
+    pub pc: u16,     // starts at 0x200
     pub sp: usize,
     pub stack: [u16; 16],
     pub delay_timer: u8,
@@ -39,5 +41,18 @@ impl Cpu {
         (pc1 as u16) << 8 | (pc2 as u16)
     }
 
-    pub fn decode(&mut self, opcode: u16) {}
+    pub fn decode(&mut self, opcode: u16) {
+        match opcode {
+            0x00EE => {
+                instructions::op_return(self);
+            }
+            opcode if (opcode >> 12) == 1 => {
+                instructions::op_jump(opcode, self);
+            }
+            opcode if (opcode >> 12) == 2 => {
+                instructions::op_call(opcode, self);
+            }
+            _ => {}
+        }
+    }
 }
