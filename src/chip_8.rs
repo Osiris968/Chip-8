@@ -1,7 +1,5 @@
-use crate::display::{self, Display, HEIGHT, SCALE, WIDTH};
+use crate::display::Display;
 use crate::{cpu::Cpu, instructions};
-
-use minifb::Window;
 
 pub struct Chip8 {
     pub cpu: Cpu,
@@ -16,7 +14,7 @@ impl Chip8 {
         }
     }
 
-    pub fn step(&mut self, window: &mut Window, buffer: &mut [u32]) -> bool {
+    pub fn step(&mut self) -> bool {
         if self.cpu.pc as usize + 1 >= self.cpu.ram.data.len() {
             return false; // Program counter is out of bounds!
         }
@@ -40,21 +38,15 @@ impl Chip8 {
             _ => Cpu::decode(&mut self.cpu, opcode),
         }
 
+        true
+    }
+
+    pub fn tick_timers(&mut self) {
         if self.cpu.delay_timer > 0 {
             self.cpu.delay_timer -= 1;
         }
         if self.cpu.sound_timer > 0 {
             self.cpu.sound_timer -= 1;
         }
-
-        display::draw_window(&self.display.video, buffer);
-        match window.update_with_buffer(buffer, WIDTH * SCALE, HEIGHT * SCALE) {
-            Ok(()) => (),
-            Err(e) => {
-                eprintln!("Error writing to window buffer: {}", e);
-                return false;
-            }
-        }
-        true
     }
 }

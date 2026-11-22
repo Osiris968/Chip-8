@@ -10,11 +10,13 @@ mod instructions;
 mod memory;
 
 use crate::chip_8::Chip8;
+use crate::display::{HEIGHT, SCALE, WIDTH};
 use minifb::{Key, Window};
 use std::fs;
 use std::io;
 
 const ROM_START_ADDRESS: usize = 0x200;
+const INSTRUCTIONS_PER_FRAME: usize = 10;
 
 fn load_rom(memory: &mut [u8], rom_path: &str) -> io::Result<()> {
     let rom_data = fs::read(rom_path)?;
@@ -40,10 +42,21 @@ fn main() -> io::Result<()> {
     let (mut window, mut buffer): (Window, Vec<u32>) = display::create_window();
     window.set_target_fps(60);
 
-    // NOTE: Main loop
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        chip_8::Chip8::step(&mut emulator, &mut window, &mut buffer);
-    } // End main loop.
+    // Main loop.
+    'main: while window.is_open() && !window.is_key_down(Key::Escape) {
+        for _ in 0..INSTRUCTIONS_PER_FRAME {
+            if !emulator.step() {
+                break 'main;
+            }
+        }
+        emulator.tick_timers();
+
+        display::draw_window(&emulator.display.video, &mut buffer);
+        if let Err(e) = window.update_with_buffer(&buffer, WIDTH * SCALE, HEIGHT * SCALE) {
+            eprintln!("Error writing to window buffer: {}", e);
+            break;
+        }
+    }
 
     Ok(())
 }
