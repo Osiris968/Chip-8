@@ -11,23 +11,30 @@ A CHIP-8 interpreter written in Rust. It renders the 64×32 CHIP-8 display scale
 ## Building and running
 
 ```sh
-cargo run --release
+cargo run --release -- "roms/IBM Logo.ch8"
 ```
 
-Run it from the repository root: `font.txt` and the ROM are loaded by relative path. Press **Esc** to quit.
+Run it from the repository root: `font.txt` is loaded by relative path, and relative ROM paths are resolved from the current directory. Press **Esc** to quit.
 
 ### Choosing a ROM
 
-The ROM path is currently hardcoded in `src/main.rs`:
+Pass the ROM path as the first argument (after `--` when using `cargo run`), as shown above. If you don't give one, the emulator asks for a path:
 
-```rust
-match load_rom(emulator.cpu.ram.get_mut_vec(), "roms/IBM Logo.ch8") {
+```text
+Please enter the path to your desired ROM: roms/Maze.ch8
 ```
+
+If the path doesn't exist, it asks again. You can also drag a file into the terminal: quotes and escaped spaces (`IBM\ Logo.ch8`) are handled. ROMs must fit in the 3584 bytes from `0x200` to `0xFFF`.
 
 Bundled ROMs in `roms/`:
 
 - `IBM Logo.ch8`
 - `Breakout [Carmelo Cortez, 1979].ch8`
+- `Maze.ch8`
+- `Particle Demo.ch8`
+- `Stars.ch8`
+- `Trip8 Demo.ch8`
+- `Zero Demo.ch8`
 
 ## Project layout
 
@@ -79,7 +86,7 @@ Other to-dos:
 
 - [ ] Keypad input
 - [ ] Sound
-- [ ] Choose the ROM from the command line
+- [x] Choose the ROM from the command line or a prompt
 
 ## References
 
