@@ -2,7 +2,7 @@
 
 A CHIP-8 interpreter written in Rust. It renders the 64×32 CHIP-8 display scaled 10× (a 640×320 window) using [`minifb`](https://crates.io/crates/minifb), running at 60 FPS.
 
-> **Status:** work in progress. The CPU core and a subset of the instruction set are in place; drawing, input, and sound are not yet implemented.
+> **Status:** work in progress. The CPU core, sprite drawing, and most of the instruction set are in place, and the IBM Logo ROM renders correctly. Input, the `Ex__`/`Fx__` opcodes, and sound are not yet implemented.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ Run it from the repository root: `font.txt` and the ROM are loaded by relative p
 The ROM path is currently hardcoded in `src/main.rs`:
 
 ```rust
-match load_rom(ram, "roms/IBM Logo.ch8") {
+match load_rom(emulator.cpu.ram.get_mut_vec(), "roms/IBM Logo.ch8") {
 ```
 
 Bundled ROMs in `roms/`:
@@ -34,10 +34,11 @@ Bundled ROMs in `roms/`:
 | Path                  | Purpose                                                                 |
 | --------------------- | ----------------------------------------------------------------------- |
 | `src/main.rs`         | ROM loading, window setup, main fetch/decode/execute loop, timers       |
+| `src/chip_8.rs`       | `Chip8` struct tying together the `Cpu` and `Display`                   |
 | `src/cpu.rs`          | `Cpu` state (V0–VF, I, PC, SP, stack, timers), `fetch` and `decode`     |
 | `src/instructions.rs` | One function per opcode (`op_00E0`, `op_8xy4`, …)                       |
 | `src/memory.rs`       | 4 KB RAM; loads the built-in font                                       |
-| `src/display.rs`      | Window creation and scaled framebuffer drawing                          |
+| `src/display.rs`      | `Display` 64×32 framebuffer, window creation, scaled drawing            |
 | `font.txt`            | Hex font sprite data (0–F, 5 bytes each)                                |
 | `roms/`               | Test ROMs                                                               |
 
@@ -63,20 +64,19 @@ Implemented:
 - [x] `6xkk` LD Vx, byte
 - [x] `7xkk` ADD Vx, byte
 - [x] `8xy0`–`8xy7`, `8xyE` arithmetic and logic
+- [x] `9xy0` SNE Vx, Vy
+- [x] `Annn` LD I, addr
+- [x] `Bnnn` JP V0, addr
+- [x] `Cxkk` RND Vx, byte
+- [x] `Dxyn` DRW (sprite drawing; the start position wraps, and the sprite clips at the screen edges)
 
 Not yet implemented:
 
-- [ ] `9xy0` SNE Vx, Vy
-- [ ] `Annn` LD I, addr
-- [ ] `Bnnn` JP V0, addr
-- [ ] `Cxkk` RND Vx, byte
-- [ ] `Dxyn` DRW (sprite drawing)
 - [ ] `Ex9E` / `ExA1` key skips
 - [ ] `Fx07`–`Fx65` timers, keys, BCD, memory ops
 
 Other to-dos:
 
-- [ ] Write sprites into the framebuffer (nothing is drawn to the screen until `Dxyn` is in)
 - [ ] Keypad input
 - [ ] Sound
 - [ ] Choose the ROM from the command line
