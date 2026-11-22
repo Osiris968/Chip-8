@@ -5,9 +5,9 @@
 
 use minifb::{Window, WindowOptions};
 
-const WIDTH: usize = 64;
-const HEIGHT: usize = 32;
-const SCALE: usize = 10;
+pub const WIDTH: usize = 64;
+pub const HEIGHT: usize = 32;
+pub const SCALE: usize = 10;
 
 pub struct Display {
     pub video: Vec<u32>,
