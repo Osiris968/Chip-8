@@ -9,6 +9,18 @@ const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const SCALE: usize = 10;
 
+pub struct Display {
+    pub video: Vec<u32>,
+}
+
+impl Display {
+    pub fn new() -> Self {
+        Self {
+            video: vec![0u32; WIDTH * HEIGHT],
+        }
+    }
+}
+
 pub fn create_window() -> (Window, Vec<u32>) {
     let window = Window::new(
         "Chip-8 ROM",
@@ -23,7 +35,7 @@ pub fn create_window() -> (Window, Vec<u32>) {
     (window, buffer)
 }
 
-pub fn draw_window(display: &[i32], buffer: &mut [u32]) {
+pub fn draw_window(display: &[u32], buffer: &mut [u32]) {
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
             let pixel = display[y * WIDTH + x];

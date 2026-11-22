@@ -3,11 +3,13 @@
 //
 // Frontend: window, input, timing loop
 
+mod chip_8;
 mod cpu;
 mod display;
 mod instructions;
 mod memory;
 
+use crate::chip_8::Chip8;
 use minifb::{Key, Window};
 use std::fs;
 use std::io;
@@ -27,23 +29,11 @@ fn load_rom(memory: &mut [u8], rom_path: &str) -> io::Result<()> {
     Ok(())
 }
 
-#[allow(unused)]
-fn print_memory(ram: &[u8]) {
-    for (index, byte) in ram.iter().enumerate() {
-        println!("Address {}: {}", index, byte);
-    }
-}
-
 fn main() -> io::Result<()> {
-    // Creating memory vector and loading rom into memory.
-    // let mut ram = memory::Memory::new();
-    // ram.load_font();
-    // let ram = ram.get_mut_vec();
+    let mut emulator = Chip8::new();
+    // let mut cpu = cpu::Cpu::new();
 
-    let mut cpu = cpu::Cpu::new();
-    // let ram = cpu.ram.get_mut_vec();
-
-    match load_rom(cpu.ram.get_mut_vec(), "roms/IBM Logo.ch8") {
+    match load_rom(emulator.cpu.ram.get_mut_vec(), "roms/IBM Logo.ch8") {
         Ok(()) => (),
         Err(e) => {
             eprintln!("Couldn't load rom: {}", e);
@@ -52,14 +42,11 @@ fn main() -> io::Result<()> {
     }
 
     let (mut window, mut buffer): (Window, Vec<u32>) = display::create_window();
-
-    let display = vec![0; WIDTH * HEIGHT];
     window.set_target_fps(60);
+    let chip_8::Chip8 { cpu, display } = &mut emulator;
 
     // NOTE: Main loop
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        display::draw_window(&display, &mut buffer);
-
         if cpu.pc as usize + 1 >= cpu.ram.data.len() {
             break; // Program counter is out of bounds!
         }
@@ -75,9 +62,12 @@ fn main() -> io::Result<()> {
         // Decode instruction.
         match opcode {
             0x00E0 => {
-                instructions::op_00E0(&mut buffer);
+                instructions::op_00E0(&mut display.video);
             }
-            _ => cpu::Cpu::decode(&mut cpu, opcode),
+            opcode if (opcode >> 12) == 0xD => {
+                instructions::op_Dxyn(opcode, cpu, display);
+            }
+            _ => cpu::Cpu::decode(cpu, opcode),
         }
 
         if cpu.delay_timer > 0 {
@@ -87,6 +77,7 @@ fn main() -> io::Result<()> {
             cpu.sound_timer -= 1;
         }
 
+        display::draw_window(&display.video, &mut buffer);
         match window.update_with_buffer(&buffer, WIDTH * SCALE, HEIGHT * SCALE) {
             Ok(()) => (),
             Err(e) => {

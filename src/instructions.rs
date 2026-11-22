@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::cpu;
+use crate::{cpu, display};
 use rand::RngExt;
 
 const WIDTH: usize = 64;
@@ -232,24 +232,38 @@ pub fn op_Cxkk(opcode: u16, cpu: &mut cpu::Cpu) {
 /// Display n-byte sprite starting at memory location I at (Vx, Vy),
 /// set VF = collision.
 #[allow(non_snake_case)]
-pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu) {
-    let vx = (opcode & 0x0F00) >> 8;
-    let vy = (opcode & 0x00F0) >> 4;
-    let height = opcode & 0x000F;
-    let ram = cpu.ram.get_mut_vec();
+pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu, display: &mut display::Display) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+    let vy = ((opcode & 0x00F0) >> 4) as usize;
+    let height = (opcode & 0x000F) as usize;
 
     // Wrap if going beyond screen boundaries.
-    let x_pos = cpu.v[vx as usize] % WIDTH as u8;
-    let y_pos = cpu.v[vy as usize] % HEIGHT as u8;
+    let x_pos = cpu.v[vx] as usize % WIDTH;
+    let y_pos = cpu.v[vy] as usize % HEIGHT;
 
     cpu.v[0xF] = 0;
 
     for row in 0..height {
-        let sprite_byte: u8 = ram[cpu.i as usize + row as usize];
+        let y = y_pos + row;
+        if y >= HEIGHT {
+            break;
+        }
+        let sprite_byte = cpu.ram.data[cpu.i as usize + row];
 
-        for col in 0..8_u32 {
-            let sprite_pixel = sprite_byte & (0x80 >> col);
-            // NOTE: Need video (buffer?) 64x32 vec. :(
+        for col in 0..8_usize {
+            let x = x_pos + col;
+            if x >= WIDTH {
+                break;
+            }
+
+            if sprite_byte & (0x80 >> col) != 0 {
+                let screen_pixel = &mut display.video[y * WIDTH + x];
+                if *screen_pixel == 0xFFFFFFFF {
+                    cpu.v[0xF] = 1;
+                }
+
+                *screen_pixel ^= 0xFFFFFFFF;
+            }
         }
     }
 }
