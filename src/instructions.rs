@@ -6,12 +6,14 @@ use crate::{
 };
 use rand::RngExt;
 
-/// Clear the display.
+/// Clear the display by turning every pixel off.
 pub fn op_00E0(buffer: &mut [u32]) {
     buffer.fill(0);
 }
 
-/// Return from a subroutine.
+/// Return from a subroutine by popping the return address off the stack into `pc`.
+///
+/// If the stack is empty, prints a warning and does nothing.
 pub fn op_00EE(cpu: &mut cpu::Cpu) {
     if cpu.sp == 0 {
         eprintln!(
@@ -32,7 +34,9 @@ pub fn op_1nnn(opcode: u16, cpu: &mut cpu::Cpu) {
     cpu.pc = address;
 }
 
-/// Call subroutine at nnn.
+/// Call subroutine at nnn, pushing the current `pc` onto the stack.
+///
+/// If the stack is full (16 calls deep), prints a warning and does nothing.
 pub fn op_2nnn(opcode: u16, cpu: &mut cpu::Cpu) {
     let address = opcode & 0x0FFF;
 
@@ -85,7 +89,7 @@ pub fn op_6xkk(opcode: u16, cpu: &mut cpu::Cpu) {
     cpu.v[vx as usize] = byte;
 }
 
-/// Set Vx = Vx + kk.
+/// Set Vx = Vx + kk, wrapping on overflow. VF is not changed.
 pub fn op_7xkk(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let byte = (opcode & 0x00FF) as u8;
@@ -129,6 +133,8 @@ pub fn op_8xy3(opcode: u16, cpu: &mut cpu::Cpu) {
 /// The values of Vx and Vy are added together. If the result is greater
 /// than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 8
 /// bits of the result are kept, and stored in Vx.
+///
+/// VF is written after Vx, so the flag wins when x is F.
 pub fn op_8xy4(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
@@ -141,8 +147,10 @@ pub fn op_8xy4(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Set Vx = Vx - Vy, set VF = NOT borrow.
-/// If Vx > Vy, then VF is set to 1, otherwise 0.
+/// If Vx >= Vy (no borrow), then VF is set to 1, otherwise 0.
 /// Then Vy is subtracted from Vx, and the results stored in Vx.
+///
+/// VF is written after Vx, so the flag wins when x is F.
 pub fn op_8xy5(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
@@ -157,6 +165,9 @@ pub fn op_8xy5(opcode: u16, cpu: &mut cpu::Cpu) {
 /// Set Vx = Vx SHR 1.
 /// If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0.
 /// Then Vx is divided by 2.
+///
+/// Uses the modern behavior of shifting Vx in place; the original COSMAC VIP
+/// shifted Vy into Vx. VF is written after Vx, so the flag wins when x is F.
 pub fn op_8xy6(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
 
@@ -169,8 +180,10 @@ pub fn op_8xy6(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Set Vx = Vy - Vx, set VF = NOT borrow.
-/// If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy,
-/// and the results stored in Vx.
+/// If Vy >= Vx (no borrow), then VF is set to 1, otherwise 0. Then Vx is
+/// subtracted from Vy, and the results stored in Vx.
+///
+/// VF is written after Vx, so the flag wins when x is F.
 pub fn op_8xy7(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
@@ -185,6 +198,9 @@ pub fn op_8xy7(opcode: u16, cpu: &mut cpu::Cpu) {
 /// Set Vx = Vx SHL 1
 /// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0.
 /// Then Vx is multiplied by 2.
+///
+/// Uses the modern behavior of shifting Vx in place; the original COSMAC VIP
+/// shifted Vy into Vx. VF is written after Vx, so the flag wins when x is F.
 pub fn op_8xyE(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
 
@@ -220,7 +236,7 @@ pub fn op_Bnnn(opcode: u16, cpu: &mut cpu::Cpu) {
     cpu.pc = cpu.v[0] as u16 + address;
 }
 
-/// Set Vx = random byte AND kk
+/// Set Vx = random byte AND kk.
 pub fn op_Cxkk(opcode: u16, cpu: &mut cpu::Cpu) {
     let mut rng = rand::rng();
     let rand_byte: u8 = rng.random();
@@ -233,6 +249,12 @@ pub fn op_Cxkk(opcode: u16, cpu: &mut cpu::Cpu) {
 
 /// Display n-byte sprite starting at memory location I at (Vx, Vy),
 /// set VF = collision.
+///
+/// Each byte is one 8-pixel row, and set bits are XORed onto the screen.
+/// VF is set to 1 if any lit pixel gets turned off, otherwise 0.
+/// The starting position wraps around the screen, but the sprite itself is
+/// clipped at the right and bottom edges. Drawing stops early if the sprite
+/// data runs past the end of RAM.
 pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu, display: &mut display::Display) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
     let vy = ((opcode & 0x00F0) >> 4) as usize;
@@ -273,6 +295,7 @@ pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu, display: &mut display::Display) 
 }
 
 /// Skip next instruction if key with the value of Vx is pressed.
+/// Only the low 4 bits of Vx are used.
 pub fn op_Ex9E(opcode: u16, cpu: &mut cpu::Cpu, keypad: &[bool]) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
     let key = (cpu.v[vx] & 0xF) as usize;
@@ -283,6 +306,7 @@ pub fn op_Ex9E(opcode: u16, cpu: &mut cpu::Cpu, keypad: &[bool]) {
 }
 
 /// Skip next instruction if key with the value of Vx is not pressed.
+/// Only the low 4 bits of Vx are used.
 pub fn op_ExA1(opcode: u16, cpu: &mut cpu::Cpu, keypad: &[bool]) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
     let key = (cpu.v[vx] & 0xF) as usize;
@@ -300,6 +324,10 @@ pub fn op_Fx07(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Wait for a key press, store the value of the key in Vx.
+///
+/// If no key is down, `pc` is moved back so this instruction runs again on the
+/// next step. If several keys are down, the lowest-numbered one is used.
+/// This triggers on press; the original COSMAC VIP waited for release.
 pub fn op_Fx0A(opcode: u16, cpu: &mut cpu::Cpu, keypad: &[bool]) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
 
@@ -323,7 +351,7 @@ pub fn op_Fx18(opcode: u16, cpu: &mut cpu::Cpu) {
     cpu.sound_timer = cpu.v[vx];
 }
 
-/// Set I = I + Vx.
+/// Set I = I + Vx, wrapping on overflow. VF is not changed.
 pub fn op_Fx1E(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
 
@@ -331,6 +359,7 @@ pub fn op_Fx1E(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Set I = location of sprite for digit Vx.
+/// Only the low 4 bits of Vx are used. Each font glyph is 5 bytes, starting at 0x50.
 pub fn op_Fx29(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
     let digit = (cpu.v[vx] & 0xF) as u16;
@@ -339,6 +368,9 @@ pub fn op_Fx29(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+/// The hundreds digit goes at I, tens at I+1, and ones at I+2.
+///
+/// If I+2 is past the end of RAM, prints a warning and does nothing.
 pub fn op_Fx33(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
     let value = cpu.v[vx];
@@ -356,6 +388,9 @@ pub fn op_Fx33(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Store registers V0 through Vx in memory starting at location I.
+///
+/// I is not changed (modern behavior; the original COSMAC VIP advanced it).
+/// If I+x is past the end of RAM, prints a warning and does nothing.
 pub fn op_Fx55(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
 
@@ -371,6 +406,9 @@ pub fn op_Fx55(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Read registers V0 through Vx from memory starting at location I.
+///
+/// I is not changed (modern behavior; the original COSMAC VIP advanced it).
+/// If I+x is past the end of RAM, prints a warning and does nothing.
 pub fn op_Fx65(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
 

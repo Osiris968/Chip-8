@@ -20,6 +20,9 @@ use std::path::Path;
 const ROM_START_ADDRESS: usize = 0x200;
 const INSTRUCTIONS_PER_FRAME: usize = 10;
 
+/// Copies the ROM at `rom_path` into `memory` starting at 0x200.
+///
+/// Exits the process if the file can't be read or is too large to fit.
 fn load_rom(memory: &mut [u8], rom_path: &str) {
     let Ok(rom_data) = fs::read(rom_path) else {
         eprintln!("Could not read file: {}", rom_path);
@@ -48,6 +51,10 @@ fn clean_path(raw: &str) -> String {
         .replace("\\ ", " ")
 }
 
+/// Loads the ROM named by the first command-line argument, or, if there isn't
+/// one, keeps prompting on stdin until a valid path is entered.
+///
+/// Exits the process if the argument isn't a file or stdin is closed.
 fn choose_rom(memory: &mut [u8]) {
     // Use the path from the command line if one was given.
     if let Some(arg) = env::args().nth(1) {
@@ -124,12 +131,17 @@ const KEYMAP: [Key; 16] = [
     Key::V,    // F
 ];
 
+/// Sets each CHIP-8 key in `keypad` based on whether its host key in
+/// [`KEYMAP`] is held down in `window`.
 fn update_keypad(window: &Window, keypad: &mut [bool; 16]) {
     for (pressed, &key) in keypad.iter_mut().zip(KEYMAP.iter()) {
         *pressed = window.is_key_down(key);
     }
 }
 
+/// Loads a ROM, opens the window, and runs the emulator at 60 frames per
+/// second until the window is closed, Escape is pressed, or the program
+/// counter runs off the end of RAM.
 fn main() -> io::Result<()> {
     let mut emulator = Chip8::new();
 

@@ -15,7 +15,9 @@ use std::fs;
 //     length: u8,
 // }
 
+/// The CHIP-8's 4 KB of RAM.
 pub struct Memory {
+    /// 4096 bytes. The font lives at 0x50..0xA0 and programs load at 0x200.
     pub data: Vec<u8>,
 }
 
@@ -26,6 +28,7 @@ impl Default for Memory {
 }
 
 impl Memory {
+    /// Creates zeroed RAM and loads the font into it.
     pub fn new() -> Self {
         let mut ram = Self {
             data: vec![0u8; 4096],
@@ -36,12 +39,16 @@ impl Memory {
         ram
     }
 
-    // Returns a mutable reference bound to the lifetime of the struct.
+    /// Returns a mutable reference to the raw RAM bytes, e.g. for loading a ROM.
     pub fn get_mut_vec(&mut self) -> &mut Vec<u8> {
         &mut self.data
     }
 
-    // Load the font into addresses 0x50 - 0x9F. (80 values)
+    /// Loads the font into addresses 0x50 - 0x9F (80 values: 16 glyphs of 5 bytes).
+    ///
+    /// Reads whitespace-separated hex bytes from `font.txt` in the current
+    /// directory. If the file can't be read, the font is left blank; if it
+    /// contains something that isn't a hex byte, this panics.
     pub fn load_font(&mut self) {
         // Load font values into string.
         let content = match fs::read_to_string("font.txt") {

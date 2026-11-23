@@ -1,13 +1,20 @@
 use crate::display::Display;
 use crate::{cpu::Cpu, instructions};
 
+/// The whole CHIP-8 machine: the CPU (with its RAM), the screen, and the keypad.
 pub struct Chip8 {
+    /// Registers, timers, stack, and RAM.
     pub cpu: Cpu,
+    /// The 64x32 framebuffer that `00E0` and `Dxyn` draw into.
     pub display: Display,
+    /// Which of the 16 keys (0x0..=0xF) are held down right now.
+    /// The frontend should update this once per frame.
     pub keypad: [bool; 16],
 }
 
 impl Chip8 {
+    /// Creates a machine with a fresh CPU, a blank screen, and no keys pressed.
+    /// No ROM is loaded; copy one into `cpu.ram` at 0x200 before stepping.
     pub fn new() -> Self {
         Self {
             cpu: Cpu::new(),
@@ -16,6 +23,14 @@ impl Chip8 {
         }
     }
 
+    /// Fetches, decodes, and executes one instruction.
+    ///
+    /// Opcodes that need the display or keypad (`00E0`, `Dxyn`, `Ex9E`,
+    /// `ExA1`, `Fx0A`) are handled here; everything else goes to
+    /// [`Cpu::decode`].
+    ///
+    /// Returns `false` if the program counter has run off the end of RAM,
+    /// meaning the emulator should stop.
     pub fn step(&mut self) -> bool {
         // Returns if PC is out of bounds.
         let Some(opcode) = self.cpu.fetch() else {
@@ -48,6 +63,8 @@ impl Chip8 {
         true
     }
 
+    /// Counts the delay and sound timers down by one, stopping at zero.
+    /// Call this at 60 Hz (once per frame).
     pub fn tick_timers(&mut self) {
         if self.cpu.delay_timer > 0 {
             self.cpu.delay_timer -= 1;

@@ -2,7 +2,7 @@
 
 A CHIP-8 interpreter written in Rust. It renders the 64×32 CHIP-8 display scaled 10× (a 640×320 window) using [`minifb`](https://crates.io/crates/minifb), running at 60 FPS.
 
-> **Status:** work in progress. The CPU core, sprite drawing, and most of the instruction set are in place, and the IBM Logo ROM renders correctly. Input, the `Ex__`/`Fx__` opcodes, and sound are not yet implemented.
+> **Status:** work in progress. The full original CHIP-8 instruction set and keypad input are in place. Sound is not yet implemented: the sound timer counts down, but nothing plays.
 
 ## Requirements
 
@@ -15,6 +15,8 @@ cargo run --release -- "roms/IBM Logo.ch8"
 ```
 
 Run it from the repository root: `font.txt` is loaded by relative path, and relative ROM paths are resolved from the current directory. Press **Esc** to quit.
+
+The emulator runs 10 instructions per frame at 60 FPS (about 600 instructions per second), and the delay and sound timers count down once per frame.
 
 ### Choosing a ROM
 
@@ -36,13 +38,27 @@ Bundled ROMs in `roms/`:
 - `Trip8 Demo.ch8`
 - `Zero Demo.ch8`
 
+### Controls
+
+The 16-key CHIP-8 keypad is mapped to the left side of the keyboard:
+
+```text
+CHIP-8 keypad      Keyboard
+1 2 3 C            1 2 3 4
+4 5 6 D            Q W E R
+7 8 9 E            A S D F
+A 0 B F            Z X C V
+```
+
+Each game picks its own keys. For example, Breakout moves the paddle with CHIP-8 keys 4 and 6 (**Q** and **E**), and you start each ball by pressing any key.
+
 ## Project layout
 
 | Path                  | Purpose                                                                 |
 | --------------------- | ----------------------------------------------------------------------- |
-| `src/main.rs`         | ROM loading, window setup, main fetch/decode/execute loop, timers       |
-| `src/chip_8.rs`       | `Chip8` struct tying together the `Cpu` and `Display`                   |
-| `src/cpu.rs`          | `Cpu` state (V0–VF, I, PC, SP, stack, timers), `fetch` and `decode`     |
+| `src/main.rs`         | ROM loading, window setup, keyboard mapping, main loop                  |
+| `src/chip_8.rs`       | `Chip8` tying together the `Cpu`, `Display`, and keypad; `step` runs one instruction (and handles the display and keypad opcodes); `tick_timers` |
+| `src/cpu.rs`          | `Cpu` state (V0–VF, I, PC, SP, stack, timers, RAM), `fetch` and `decode` for the CPU-only opcodes |
 | `src/instructions.rs` | One function per opcode (`op_00E0`, `op_8xy4`, …)                       |
 | `src/memory.rs`       | 4 KB RAM; loads the built-in font                                       |
 | `src/display.rs`      | `Display` 64×32 framebuffer, window creation, scaled drawing            |
@@ -59,7 +75,7 @@ Bundled ROMs in `roms/`:
 
 ## Instruction support
 
-Implemented:
+Every original CHIP-8 instruction except `0nnn` is implemented:
 
 - [x] `00E0` CLS
 - [x] `00EE` RET
@@ -76,17 +92,40 @@ Implemented:
 - [x] `Bnnn` JP V0, addr
 - [x] `Cxkk` RND Vx, byte
 - [x] `Dxyn` DRW (sprite drawing; the start position wraps, and the sprite clips at the screen edges)
+- [x] `Ex9E` / `ExA1` SKP / SKNP (skip if a key is / isn't pressed)
+- [x] `Fx07` LD Vx, DT
+- [x] `Fx0A` LD Vx, K (wait for a key press)
+- [x] `Fx15` / `Fx18` LD DT, Vx / LD ST, Vx
+- [x] `Fx1E` ADD I, Vx
+- [x] `Fx29` LD F, Vx (font sprite address)
+- [x] `Fx33` LD B, Vx (BCD)
+- [x] `Fx55` / `Fx65` store / load V0–Vx
 
-Not yet implemented:
+`0nnn` (SYS), which called machine code on the original hardware, is ignored, as in most modern interpreters. Unknown opcodes are skipped.
 
-- [ ] `Ex9E` / `ExA1` key skips
-- [ ] `Fx07`–`Fx65` timers, keys, BCD, memory ops
+### Behavior notes
 
-Other to-dos:
+Where interpreters disagree, this one follows the common modern behavior:
 
-- [ ] Keypad input
-- [ ] Sound
+- `8xy6` / `8xyE` shift Vx in place. The original COSMAC VIP shifted Vy into Vx.
+- `Fx55` / `Fx65` leave I unchanged. The COSMAC VIP advanced it.
+- `Fx0A` fires when a key is pressed. The COSMAC VIP waited for the key to be released.
+- In `8xy4`–`8xyE`, VF is written after the result, so the flag wins when x is F.
+
+Bad ROM data prints a warning to stderr instead of crashing:
+
+- Returning with an empty stack, or calling with a full one (16 levels), skips the instruction.
+- `Fx33`, `Fx55`, and `Fx65` skip the instruction if their memory range runs past the end of RAM. `Dxyn` stops drawing at the end of RAM.
+
+### Known ROM quirks
+
+In the bundled Breakout, bricks sometimes reappear where the ball has already broken through. That's how the 1979 program works, not an emulator bug: it erases a brick by XORing a 4-pixel strip at the ball's position, which turns pixels cleared by an earlier hit back on.
+
+## To-dos
+
+- [x] Keypad input
 - [x] Choose the ROM from the command line or a prompt
+- [ ] Sound
 
 ## References
 
