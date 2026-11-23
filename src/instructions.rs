@@ -1,21 +1,26 @@
-#![allow(unused)]
+#![allow(non_snake_case)]
 
-use crate::{cpu, display};
+use crate::{
+    cpu,
+    display::{self, HEIGHT, WIDTH},
+};
 use rand::RngExt;
 
-const WIDTH: usize = 64;
-const HEIGHT: usize = 32;
-const SCALE: usize = 10;
-
 /// Clear the display.
-#[allow(non_snake_case)]
 pub fn op_00E0(buffer: &mut [u32]) {
     buffer.fill(0);
 }
 
 /// Return from a subroutine.
-#[allow(non_snake_case)]
 pub fn op_00EE(cpu: &mut cpu::Cpu) {
+    if cpu.sp == 0 {
+        eprintln!(
+            "Stack underflow: return with an empty stack at {:#05X}",
+            cpu.pc - 2
+        );
+        return;
+    }
+
     cpu.sp -= 1;
 
     cpu.pc = cpu.stack[cpu.sp];
@@ -23,13 +28,18 @@ pub fn op_00EE(cpu: &mut cpu::Cpu) {
 
 /// Jump to location nnn.
 pub fn op_1nnn(opcode: u16, cpu: &mut cpu::Cpu) {
-    let address = (opcode & 0x0FFF);
+    let address = opcode & 0x0FFF;
     cpu.pc = address;
 }
 
 /// Call subroutine at nnn.
 pub fn op_2nnn(opcode: u16, cpu: &mut cpu::Cpu) {
-    let address = (opcode & 0x0FFF);
+    let address = opcode & 0x0FFF;
+
+    if cpu.sp >= cpu.stack.len() {
+        eprintln!("Stack overflow: call to {:#05X} with a full stack", address);
+        return;
+    }
 
     cpu.stack[cpu.sp] = cpu.pc;
     cpu.sp += 1;
@@ -123,15 +133,11 @@ pub fn op_8xy4(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
 
-    let sum: u16 = (cpu.v[vx as usize]) as u16 + (cpu.v[vy as usize]) as u16;
+    let (result, carry) = cpu.v[vx as usize].overflowing_add(cpu.v[vy as usize]);
 
-    if sum > 255 {
-        cpu.v[0xF] = 1;
-    } else {
-        cpu.v[0xF] = 0;
-    }
-
-    cpu.v[vx as usize] = (sum & 0xFF) as u8;
+    // Write VF last so it isn't clobbered when x is F.
+    cpu.v[vx as usize] = result;
+    cpu.v[0xF] = carry as u8;
 }
 
 /// Set Vx = Vx - Vy, set VF = NOT borrow.
@@ -141,13 +147,11 @@ pub fn op_8xy5(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
 
-    if cpu.v[vx as usize] > cpu.v[vy as usize] {
-        cpu.v[0xF] = 1;
-    } else {
-        cpu.v[0xF] = 0;
-    }
+    let (result, borrow) = cpu.v[vx as usize].overflowing_sub(cpu.v[vy as usize]);
 
-    cpu.v[vx as usize] = cpu.v[vx as usize].wrapping_sub(cpu.v[vy as usize]);
+    // Write VF last so it isn't clobbered when x is F.
+    cpu.v[vx as usize] = result;
+    cpu.v[0xF] = !borrow as u8;
 }
 
 /// Set Vx = Vx SHR 1.
@@ -156,10 +160,12 @@ pub fn op_8xy5(opcode: u16, cpu: &mut cpu::Cpu) {
 pub fn op_8xy6(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
 
-    // Save the Least Significant Bit in VF.
-    cpu.v[0xF] = (cpu.v[vx as usize] & 0x1);
+    // Save the Least Significant Bit before shifting.
+    let lsb = cpu.v[vx as usize] & 0x1;
 
+    // Write VF last so it isn't clobbered when x is F.
     cpu.v[vx as usize] >>= 1;
+    cpu.v[0xF] = lsb;
 }
 
 /// Set Vx = Vy - Vx, set VF = NOT borrow.
@@ -169,26 +175,25 @@ pub fn op_8xy7(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
     let vy = (opcode & 0x00F0) >> 4;
 
-    if cpu.v[vy as usize] > cpu.v[vx as usize] {
-        cpu.v[0xF] = 1;
-    } else {
-        cpu.v[0xF] = 0;
-    }
+    let (result, borrow) = cpu.v[vy as usize].overflowing_sub(cpu.v[vx as usize]);
 
-    cpu.v[vx as usize] = cpu.v[vy as usize].wrapping_sub(cpu.v[vx as usize]);
+    // Write VF last so it isn't clobbered when x is F.
+    cpu.v[vx as usize] = result;
+    cpu.v[0xF] = !borrow as u8;
 }
 
 /// Set Vx = Vx SHL 1
 /// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0.
 /// Then Vx is multiplied by 2.
-#[allow(non_snake_case)]
 pub fn op_8xyE(opcode: u16, cpu: &mut cpu::Cpu) {
     let vx = (opcode & 0x0F00) >> 8;
 
-    // Save the Most Significant Bit in VF.
-    cpu.v[0xF] = (cpu.v[vx as usize] & 0x80) >> 7;
+    // Save the Most Significant Bit before shifting.
+    let msb = (cpu.v[vx as usize] & 0x80) >> 7;
 
+    // Write VF last so it isn't clobbered when x is F.
     cpu.v[vx as usize] <<= 1;
+    cpu.v[0xF] = msb;
 }
 
 /// Skip next instruction if Vx != Vy.
@@ -202,7 +207,6 @@ pub fn op_9xy0(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Set Index Register = nnn.
-#[allow(non_snake_case)]
 pub fn op_Annn(opcode: u16, cpu: &mut cpu::Cpu) {
     let address = opcode & 0x0FFF;
 
@@ -210,7 +214,6 @@ pub fn op_Annn(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Jump to location nnn + V0.
-#[allow(non_snake_case)]
 pub fn op_Bnnn(opcode: u16, cpu: &mut cpu::Cpu) {
     let address = opcode & 0x0FFF;
 
@@ -218,7 +221,6 @@ pub fn op_Bnnn(opcode: u16, cpu: &mut cpu::Cpu) {
 }
 
 /// Set Vx = random byte AND kk
-#[allow(non_snake_case)]
 pub fn op_Cxkk(opcode: u16, cpu: &mut cpu::Cpu) {
     let mut rng = rand::rng();
     let rand_byte: u8 = rng.random();
@@ -231,7 +233,6 @@ pub fn op_Cxkk(opcode: u16, cpu: &mut cpu::Cpu) {
 
 /// Display n-byte sprite starting at memory location I at (Vx, Vy),
 /// set VF = collision.
-#[allow(non_snake_case)]
 pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu, display: &mut display::Display) {
     let vx = ((opcode & 0x0F00) >> 8) as usize;
     let vy = ((opcode & 0x00F0) >> 4) as usize;
@@ -248,7 +249,10 @@ pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu, display: &mut display::Display) 
         if y >= HEIGHT {
             break;
         }
-        let sprite_byte = cpu.ram.data[cpu.i as usize + row];
+        // Stop if the sprite runs past the end of RAM.
+        let Some(&sprite_byte) = cpu.ram.data.get(cpu.i as usize + row) else {
+            break;
+        };
 
         for col in 0..8_usize {
             let x = x_pos + col;
@@ -266,4 +270,117 @@ pub fn op_Dxyn(opcode: u16, cpu: &mut cpu::Cpu, display: &mut display::Display) 
             }
         }
     }
+}
+
+/// Skip next instruction if key with the value of Vx is pressed.
+pub fn op_Ex9E(opcode: u16, cpu: &mut cpu::Cpu, keypad: &[bool]) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+    let key = (cpu.v[vx] & 0xF) as usize;
+
+    if keypad[key] {
+        cpu.pc += 2;
+    }
+}
+
+/// Skip next instruction if key with the value of Vx is not pressed.
+pub fn op_ExA1(opcode: u16, cpu: &mut cpu::Cpu, keypad: &[bool]) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+    let key = (cpu.v[vx] & 0xF) as usize;
+
+    if !keypad[key] {
+        cpu.pc += 2;
+    }
+}
+
+/// Set Vx = delay timer value.
+pub fn op_Fx07(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+
+    cpu.v[vx] = cpu.delay_timer;
+}
+
+/// Wait for a key press, store the value of the key in Vx.
+pub fn op_Fx0A(opcode: u16, cpu: &mut cpu::Cpu, keypad: &[bool]) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+
+    match keypad.iter().position(|&pressed| pressed) {
+        Some(key) => cpu.v[vx] = key as u8,
+        None => cpu.pc -= 2, // No key yet: run this instruction again.
+    }
+}
+
+/// Set delay timer = Vx.
+pub fn op_Fx15(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+
+    cpu.delay_timer = cpu.v[vx];
+}
+
+/// Set sound timer = Vx.
+pub fn op_Fx18(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+
+    cpu.sound_timer = cpu.v[vx];
+}
+
+/// Set I = I + Vx.
+pub fn op_Fx1E(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+
+    cpu.i = cpu.i.wrapping_add(cpu.v[vx] as u16);
+}
+
+/// Set I = location of sprite for digit Vx.
+pub fn op_Fx29(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+    let digit = (cpu.v[vx] & 0xF) as u16;
+
+    cpu.i = 0x50 + (5 * digit);
+}
+
+/// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+pub fn op_Fx33(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+    let value = cpu.v[vx];
+    let start = cpu.i as usize;
+
+    // Skip the instruction if I..I+2 runs past the end of RAM.
+    let Some(digits) = cpu.ram.data.get_mut(start..start + 3) else {
+        eprintln!("Fx33: I = {:#05X} is out of bounds", cpu.i);
+        return;
+    };
+
+    digits[0] = value / 100; // Hundreds place
+    digits[1] = (value / 10) % 10; // Tens place
+    digits[2] = value % 10; // Ones place
+}
+
+/// Store registers V0 through Vx in memory starting at location I.
+pub fn op_Fx55(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+
+    let start = cpu.i as usize;
+
+    // Skip the instruction if I..=I+x runs past the end of RAM.
+    let Some(dest) = cpu.ram.data.get_mut(start..=start + vx) else {
+        eprintln!("Fx55: I = {:#05X} is out of bounds", cpu.i);
+        return;
+    };
+
+    dest.copy_from_slice(&cpu.v[..=vx]);
+}
+
+/// Read registers V0 through Vx from memory starting at location I.
+pub fn op_Fx65(opcode: u16, cpu: &mut cpu::Cpu) {
+    let vx = ((opcode & 0x0F00) >> 8) as usize;
+
+    let start = cpu.i as usize;
+
+    // Skip the instruction if I..=I+x runs past the end of RAM.
+    let Some(src) = cpu.ram.data.get(start..=start + vx) else {
+        eprintln!("Fx65: I = {:#05X} is out of bounds", cpu.i);
+        return;
+    };
+
+    cpu.v[..=vx].copy_from_slice(src);
 }

@@ -96,6 +96,40 @@ fn choose_rom(memory: &mut [u8]) {
     }
 }
 
+/// Host keys for CHIP-8 keys 0x0..=0xF, using the usual layout:
+///
+/// ```text
+/// CHIP-8      Keyboard
+/// 1 2 3 C     1 2 3 4
+/// 4 5 6 D     Q W E R
+/// 7 8 9 E     A S D F
+/// A 0 B F     Z X C V
+/// ```
+const KEYMAP: [Key; 16] = [
+    Key::X,    // 0
+    Key::Key1, // 1
+    Key::Key2, // 2
+    Key::Key3, // 3
+    Key::Q,    // 4
+    Key::W,    // 5
+    Key::E,    // 6
+    Key::A,    // 7
+    Key::S,    // 8
+    Key::D,    // 9
+    Key::Z,    // A
+    Key::C,    // B
+    Key::Key4, // C
+    Key::R,    // D
+    Key::F,    // E
+    Key::V,    // F
+];
+
+fn update_keypad(window: &Window, keypad: &mut [bool; 16]) {
+    for (pressed, &key) in keypad.iter_mut().zip(KEYMAP.iter()) {
+        *pressed = window.is_key_down(key);
+    }
+}
+
 fn main() -> io::Result<()> {
     let mut emulator = Chip8::new();
 
@@ -106,6 +140,8 @@ fn main() -> io::Result<()> {
 
     // Main loop.
     'main: while window.is_open() && !window.is_key_down(Key::Escape) {
+        update_keypad(&window, &mut emulator.keypad);
+
         for _ in 0..INSTRUCTIONS_PER_FRAME {
             if !emulator.step() {
                 break 'main;

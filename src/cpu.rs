@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 // Copyright (c) 2026 Michael Kestner. All Rights Reserved.
 // cpu.rs
 //
@@ -41,7 +39,7 @@ impl Cpu {
     pub fn fetch(&self) -> Option<u16> {
         let pc = self.pc as usize;
 
-        if pc >= self.ram.data.len() {
+        if pc + 1 >= self.ram.data.len() {
             return None;
         }
 
@@ -58,70 +56,98 @@ impl Cpu {
             0x00EE => {
                 instructions::op_00EE(self);
             }
-            opcode if (opcode >> 12) == 1 => {
+            opcode if opcode >> 12 == 1 => {
                 instructions::op_1nnn(opcode, self);
             }
-            opcode if (opcode >> 12) == 2 => {
+            opcode if opcode >> 12 == 2 => {
                 instructions::op_2nnn(opcode, self);
             }
-            opcode if (opcode >> 12) == 3 => {
+            opcode if opcode >> 12 == 3 => {
                 instructions::op_3xkk(opcode, self);
             }
-            opcode if (opcode >> 12) == 4 => {
+            opcode if opcode >> 12 == 4 => {
                 instructions::op_4xkk(opcode, self);
             }
-            opcode if (opcode >> 12) == 5 => {
+            opcode if opcode >> 12 == 5 => {
                 instructions::op_5xy0(opcode, self);
             }
-            opcode if (opcode >> 12) == 6 => {
+            opcode if opcode >> 12 == 6 => {
                 instructions::op_6xkk(opcode, self);
             }
-            opcode if (opcode >> 12) == 7 => {
+            opcode if opcode >> 12 == 7 => {
                 instructions::op_7xkk(opcode, self);
             }
             // Match all 0x8nnn instructions.
-            opcode if (opcode >> 12) == 8 => match opcode {
-                opcode if (opcode & 0xF) == 0 => {
+            opcode if opcode >> 12 == 8 => match opcode {
+                opcode if opcode & 0xF == 0 => {
                     instructions::op_8xy0(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 1 => {
+                opcode if opcode & 0xF == 1 => {
                     instructions::op_8xy1(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 2 => {
+                opcode if opcode & 0xF == 2 => {
                     instructions::op_8xy2(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 3 => {
+                opcode if opcode & 0xF == 3 => {
                     instructions::op_8xy3(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 4 => {
+                opcode if opcode & 0xF == 4 => {
                     instructions::op_8xy4(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 5 => {
+                opcode if opcode & 0xF == 5 => {
                     instructions::op_8xy5(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 6 => {
+                opcode if opcode & 0xF == 6 => {
                     instructions::op_8xy6(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 7 => {
+                opcode if opcode & 0xF == 7 => {
                     instructions::op_8xy7(opcode, self);
                 }
-                opcode if (opcode & 0xF) == 0xE => {
+                opcode if opcode & 0xF == 0xE => {
                     instructions::op_8xyE(opcode, self);
                 }
                 _ => {}
             },
-            opcode if (opcode >> 12) == 9 => {
+            opcode if opcode >> 12 == 9 => {
                 instructions::op_9xy0(opcode, self);
             }
-            opcode if (opcode >> 12) == 0xA => {
+            opcode if opcode >> 12 == 0xA => {
                 instructions::op_Annn(opcode, self);
             }
-            opcode if (opcode >> 12) == 0xB => {
+            opcode if opcode >> 12 == 0xB => {
                 instructions::op_Bnnn(opcode, self);
             }
-            opcode if (opcode >> 12) == 0xC => {
+            opcode if opcode >> 12 == 0xC => {
                 instructions::op_Cxkk(opcode, self);
             }
+            // Match all 0xFnnn instructions.
+            opcode if opcode >> 12 == 0xF => match opcode {
+                opcode if opcode & 0xF0FF == 0xF007 => {
+                    instructions::op_Fx07(opcode, self);
+                }
+                opcode if opcode & 0xF0FF == 0xF015 => {
+                    instructions::op_Fx15(opcode, self);
+                }
+                opcode if opcode & 0xF0FF == 0xF018 => {
+                    instructions::op_Fx18(opcode, self);
+                }
+                opcode if opcode & 0xF0FF == 0xF01E => {
+                    instructions::op_Fx1E(opcode, self);
+                }
+                opcode if opcode & 0xF0FF == 0xF029 => {
+                    instructions::op_Fx29(opcode, self);
+                }
+                opcode if opcode & 0xF0FF == 0xF033 => {
+                    instructions::op_Fx33(opcode, self);
+                }
+                opcode if opcode & 0xF0FF == 0xF055 => {
+                    instructions::op_Fx55(opcode, self);
+                }
+                opcode if opcode & 0xF0FF == 0xF065 => {
+                    instructions::op_Fx65(opcode, self);
+                }
+                _ => {}
+            },
             _ => {}
         }
     }
