@@ -12,6 +12,8 @@ mod memory;
 use crate::chip_8::Chip8;
 use crate::display::{HEIGHT, SCALE, WIDTH};
 use minifb::{Key, Window};
+use rodio::source::SquareWave;
+use rodio::{DeviceSinkBuilder, Player, Source};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
@@ -150,6 +152,12 @@ fn main() -> io::Result<()> {
     let (mut window, mut buffer): (Window, Vec<u32>) = display::create_window();
     window.set_target_fps(60);
 
+    let mut audio = DeviceSinkBuilder::open_default_sink().expect("Could not open audio output.");
+    audio.log_on_drop(false);
+    let beeper = Player::connect_new(audio.mixer());
+    beeper.append(SquareWave::new(440.0).amplify(0.1)); // Endless 440hz tone, quiet.
+    beeper.pause();
+
     // Main loop.
     'main: while window.is_open() && !window.is_key_down(Key::Escape) {
         update_keypad(&window, &mut emulator.keypad);
@@ -160,6 +168,11 @@ fn main() -> io::Result<()> {
             }
         }
         emulator.tick_timers();
+        if emulator.is_beeping() {
+            beeper.play();
+        } else {
+            beeper.pause();
+        }
 
         display::draw_window(&emulator.display.video, &mut buffer);
         if let Err(e) = window.update_with_buffer(&buffer, WIDTH * SCALE, HEIGHT * SCALE) {

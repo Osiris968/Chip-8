@@ -73,4 +73,9 @@ impl Chip8 {
             self.cpu.sound_timer -= 1;
         }
     }
+
+    /// True while the buzzer should be sounding (sound timer above zero).
+    pub fn is_beeping(&self) -> bool {
+        self.cpu.sound_timer > 0
+    }
 }

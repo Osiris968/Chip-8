@@ -1,12 +1,14 @@
 # Chip-8
 
-A CHIP-8 interpreter written in Rust. It renders the 64×32 CHIP-8 display scaled 10× (a 640×320 window) using [`minifb`](https://crates.io/crates/minifb), running at 60 FPS.
+A CHIP-8 interpreter written in Rust. It renders the 64×32 CHIP-8 display scaled 10× (a 640×320 window) using [`minifb`](https://crates.io/crates/minifb), running at 60 FPS, and plays the buzzer through [`rodio`](https://crates.io/crates/rodio).
 
-> **Status:** work in progress. The full original CHIP-8 instruction set and keypad input are in place. Sound is not yet implemented: the sound timer counts down, but nothing plays.
+> **Status:** work in progress. The full original CHIP-8 instruction set, keypad input, and sound are in place.
 
 ## Requirements
 
 - A Rust toolchain with edition 2024 support (Rust 1.85 or newer)
+- An audio output device: the emulator exits at startup if it can't open one
+- On Linux, the ALSA development headers and `pkg-config` (for example, `sudo apt install libasound2-dev pkg-config` on Debian/Ubuntu)
 
 ## Building and running
 
@@ -16,7 +18,7 @@ cargo run --release -- "roms/IBM Logo.ch8"
 
 Run it from the repository root: `font.txt` is loaded by relative path, and relative ROM paths are resolved from the current directory. Press **Esc** to quit.
 
-The emulator runs 10 instructions per frame at 60 FPS (about 600 instructions per second), and the delay and sound timers count down once per frame.
+The emulator runs 10 instructions per frame at 60 FPS (about 600 instructions per second), and the delay and sound timers count down once per frame. While the sound timer is above zero, a quiet 440 Hz square-wave tone plays.
 
 ### Choosing a ROM
 
@@ -56,8 +58,8 @@ Each game picks its own keys. For example, Breakout moves the paddle with CHIP-8
 
 | Path                  | Purpose                                                                 |
 | --------------------- | ----------------------------------------------------------------------- |
-| `src/main.rs`         | ROM loading, window setup, keyboard mapping, main loop                  |
-| `src/chip_8.rs`       | `Chip8` tying together the `Cpu`, `Display`, and keypad; `step` runs one instruction (and handles the display and keypad opcodes); `tick_timers` |
+| `src/main.rs`         | ROM loading, window setup, keyboard mapping, audio, main loop           |
+| `src/chip_8.rs`       | `Chip8` tying together the `Cpu`, `Display`, and keypad; `step` runs one instruction (and handles the display and keypad opcodes); `tick_timers`; `is_beeping` |
 | `src/cpu.rs`          | `Cpu` state (V0–VF, I, PC, SP, stack, timers, RAM), `fetch` and `decode` for the CPU-only opcodes |
 | `src/instructions.rs` | One function per opcode (`op_00E0`, `op_8xy4`, …)                       |
 | `src/memory.rs`       | 4 KB RAM; loads the built-in font                                       |
@@ -125,7 +127,7 @@ In the bundled Breakout, bricks sometimes reappear where the ball has already br
 
 - [x] Keypad input
 - [x] Choose the ROM from the command line or a prompt
-- [ ] Sound
+- [x] Sound
 
 ## References
 
